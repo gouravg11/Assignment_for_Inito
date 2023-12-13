@@ -1,0 +1,196 @@
+#include <bits/stdc++.h>
+using namespace std;
+
+class File {
+public:
+    string name;
+    string content;
+
+    File(string name, string content = "") : name(name), content(content) {}
+};
+
+class Directory {
+public:
+    string name;
+    unordered_map<string, File> files;
+    unordered_map<string, Directory> directories;
+
+    explicit Directory(string name) : name(name) {}
+};
+
+class FileSystem {
+private:
+    Directory root;
+    Directory* currentDirectory;
+
+public:
+    FileSystem() : root("/"), currentDirectory(&root) {}
+
+    void mkdir(string directoryName) {
+        currentDirectory->directories.emplace(directoryName, Directory(directoryName));
+    }
+
+    void cd(string path) {
+        if (path == "/") {
+            currentDirectory = &root;
+            return;
+        }
+
+        istringstream iss(path);
+        string token;
+
+        while (getline(iss, token, '/')) {
+            if (token == "~") {
+                currentDirectory = &root;
+                continue;
+            } else if (token == "..") {
+                if (currentDirectory != &root) {
+                    currentDirectory = &(currentDirectory->directories[".."]);
+                }
+                continue;
+            }
+
+            if (currentDirectory->directories.find(token) != currentDirectory->directories.end()) {
+                currentDirectory = &(currentDirectory->directories[token]);
+            }
+        }
+    }
+
+    vector<string> ls(string path = ".") {
+        Directory* dir = currentDirectory;
+
+        if (path != ".") {
+            cd(path);
+            dir = currentDirectory;
+        }
+
+        vector<string> result;
+        for (const auto& file : dir->files) {
+            result.push_back(file.first);
+        }
+        for (const auto& subdir : dir->directories) {
+            result.push_back(subdir.first + "/");
+        }
+        return result;
+    }
+
+    void grep(string filePath, string pattern) {
+        if (currentDirectory->files.find(filePath) != currentDirectory->files.end()) {
+            istringstream fileContent(currentDirectory->files[filePath].content);
+            string line;
+            while (getline(fileContent, line)) {
+                if (line.find(pattern) != string::npos) {
+                    cout << line << endl;
+                }
+            }
+        } else {
+            cout << "File not found." << endl;
+        }
+    }
+
+    void cat(string filePath) {
+        if (currentDirectory->files.find(filePath) != currentDirectory->files.end()) {
+            cout << currentDirectory->files[filePath].content << endl;
+        } else {
+            cout << "File not found." << endl;
+        }
+    }
+
+    void touch(string fileName) {
+        currentDirectory->files.emplace(fileName, File(fileName));
+    }
+
+    void echo(string text, string fileName) {
+        if (currentDirectory->files.find(fileName) != currentDirectory->files.end()) {
+            currentDirectory->files[fileName].content = text;
+        } else {
+            currentDirectory->files.emplace(fileName, File(fileName, text));
+        }
+    }
+
+    void mv(string sourcePath, string destinationPath) {
+        if (currentDirectory->files.find(sourcePath) != currentDirectory->files.end()) {
+            currentDirectory->files[destinationPath] = move(currentDirectory->files[sourcePath]);
+            currentDirectory->files.erase(sourcePath);
+        }
+    }
+
+    void cp(string sourcePath, string destinationPath) {
+        if (currentDirectory->files.find(sourcePath) != currentDirectory->files.end()) {
+            currentDirectory->files[destinationPath] = currentDirectory->files[sourcePath];
+        }
+    }
+
+    void rm(string path) {
+        if (currentDirectory->files.find(path) != currentDirectory->files.end()) {
+            currentDirectory->files.erase(path);
+        } else if (currentDirectory->directories.find(path) != currentDirectory->directories.end()) {
+            currentDirectory->directories.erase(path);
+        }
+    }
+};
+
+int main() {
+    FileSystem fs;
+    string command;
+    while (true) {
+        cout << "> ";
+        getline(cin, command);
+
+        istringstream iss(command);
+        string cmd;
+        iss >> cmd;
+
+        if (cmd == "exit") {
+            break;
+        } else if (cmd == "mkdir") {
+            string dirName;
+            cin >> dirName;
+            fs.mkdir(dirName);
+        } else if (cmd == "cd") {
+            string path;
+            cin >> path;
+            fs.cd(path);
+        } else if (cmd == "ls") {
+            string path;
+            cin >> ws;
+            getline(cin, path);
+            vector<string> files = fs.ls(path);
+            for (const auto& file : files) {
+                cout << file << endl;
+            }
+        } else if (cmd == "grep") {
+            string filePath, pattern;
+            cin >> filePath >> pattern;
+            fs.grep(filePath, pattern);
+        } else if (cmd == "cat") {
+            string filePath;
+            cin >> filePath;
+            fs.cat(filePath);
+        } else if (cmd == "touch") {
+            string fileName;
+            cin >> fileName;
+            fs.touch(fileName);
+        } else if (cmd == "echo") {
+            string fileName, text;
+            cin >> fileName;
+            getline(cin, text);
+            fs.echo(text, fileName);
+        } else if (cmd == "mv") {
+            string sourcePath, destinationPath;
+            cin >> sourcePath >> destinationPath;
+            fs.mv(sourcePath, destinationPath);
+        } else if (cmd == "cp") {
+            string sourcePath, destinationPath;
+            cin >> sourcePath >> destinationPath;
+            fs.cp(sourcePath, destinationPath);
+        } else if (cmd == "rm") {
+            string path;
+            cin >> path;
+            fs.rm(path);
+        } else {
+            cout << "Command not recognized." << endl;
+        }
+    }
+    return 0;
+}
