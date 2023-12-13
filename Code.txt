@@ -139,7 +139,7 @@ int main() {
 
         istringstream iss(command);
         string cmd;
-        iss >> cmd;
+        cin >> cmd;
 
         if (cmd == "exit") {
             break;
